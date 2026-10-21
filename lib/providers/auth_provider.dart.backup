@@ -1,0 +1,162 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AuthState {
+  final bool isLoading;
+  final String? token;
+  final String? error;
+  final String? email;
+
+  AuthState({this.isLoading = false, this.token, this.error, this.email});
+
+  AuthState copyWith({
+    bool? isLoading,
+    String? token,
+    String? error,
+    String? email,
+  }) {
+    return AuthState(
+      isLoading: isLoading ?? this.isLoading,
+      token: token ?? this.token,
+      error: error,
+      email: email ?? this.email,
+    );
+  }
+}
+
+class AuthProvider extends ChangeNotifier {
+  AuthState _state = AuthState();
+
+  AuthState get state => _state;
+
+  bool get isLoading => _state.isLoading;
+  String? get token => _state.token;
+  String? get error => _state.error;
+  String? get email => _state.email;
+
+  String _apiBase({String? overrideBaseUrl}) {
+    if (overrideBaseUrl != null && overrideBaseUrl.isNotEmpty) return overrideBaseUrl;
+    // Emulator-safe defaults for local Django dev server
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    return 'http://127.0.0.1:8000';
+  }
+
+  Future<void> login(String username, String password) async {
+    _state = _state.copyWith(isLoading: true, error: null);
+    notifyListeners();
+    
+    try {
+      final response = await http.post(
+        Uri.parse('https://megakonnect.com/api/v1/authorize/'), // Replace with your backend URL
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': username.trim(),
+          'password': password,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      print(data);
+      print(response.statusCode);
+
+      if (response.statusCode == 200) {
+        // Save tokens to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', data['access']);
+        await prefs.setString('refresh_token', data['refresh']);
+        await prefs.setString('email', data['email']);
+
+        _state = _state.copyWith(
+          isLoading: false,
+          token: data['access'],
+          email: data['email'],
+        );
+      } else {
+        _state = _state.copyWith(
+          isLoading: false,
+          error: data['message'] ?? 'Login failed',
+        );
+      }
+    } catch (e) {
+      _state = _state.copyWith(
+        isLoading: false,
+        error: 'Something went wrong. Check your network.',
+      );
+    }
+    
+    notifyListeners();
+  }
+
+  Future<bool> signup({
+    required String fullName,
+    required String username,
+    required String email,
+    required String phone,
+    required String address,
+    String? referralUsername,
+    required String password,
+    String? baseUrlOverride,
+  }) async {
+    _state = _state.copyWith(isLoading: true, error: null);
+    notifyListeners();
+
+    try {
+      final uri = Uri.parse('https://megakonnect.com/api/registration/');
+      final payload = <String, dynamic>{
+        'FullName': fullName.trim(),
+        'username': username.trim(),
+        'email': email.trim(),
+        'Phone': phone.trim(),
+        'Address': address.trim(),
+        if (referralUsername != null && referralUsername.trim().isNotEmpty)
+          'referer_username': referralUsername.trim(),
+        'password': password,
+      };
+      print(payload);
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+      print(response.statusCode);
+      print(response.body);
+      print(jsonDecode(response.body));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _state = _state.copyWith(isLoading: false);
+        notifyListeners();
+        return true;
+      } else {
+        String message = 'Sign up failed';
+        try {
+          final body = jsonDecode(response.body);
+          if (body is Map && body.isNotEmpty) {
+            message = body.values.first.toString();
+          } else if (body is String) {
+            message = body;
+          }
+        } catch (_) {}
+        _state = _state.copyWith(isLoading: false, error: message);
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _state = _state.copyWith(
+        isLoading: false,
+        error: 'Something went wrong. Check your network.',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    _state = AuthState();
+    notifyListeners();
+  }
+}
