@@ -17,6 +17,7 @@ import '../services/transaction_notifier.dart';
 import '../widgets/confirm_transaction_screen.dart';
 
 import '../providers/app_data_provider.dart';
+import '../models/app_data.dart';
 import '../utils/utils.dart';
 
 class BuyAirtimeScreen extends StatefulWidget {
@@ -113,6 +114,33 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
   String _logoForNetwork(int networkId) =>
       _NetworkChip._images[networkId] ?? '';
 
+  AirtimeQuote? _currentQuote(AppDataProvider provider) {
+    final networkId = _selectedNetworkId;
+    final airtimeType = _selectedAirtimeType;
+    final faceValue = double.tryParse(_amountController.text.trim());
+    final data = provider.data;
+    if (networkId == null ||
+        airtimeType == null ||
+        faceValue == null ||
+        faceValue <= 0 ||
+        data == null) {
+      return null;
+    }
+    final matches = data.networks.where((item) => item.id == networkId);
+    if (matches.isEmpty) return null;
+    return data.airtimePricing.quote(
+      network: matches.first.name,
+      airtimeType: airtimeType,
+      faceValue: faceValue,
+    );
+  }
+
+  String _money(double value) => '₦${value.toStringAsFixed(2)}';
+
+  String _percent(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(2);
+
   Future<void> _saveBeneficiary({
     required int networkId,
     required String networkName,
@@ -141,6 +169,8 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
     final airtimeType = _selectedAirtimeType!;
     final phone = _phoneController.text.trim();
     final amount = _amountController.text.trim();
+    final quote = _currentQuote(appData);
+    if (quote == null) return;
     final imagePath = _logoForNetwork(networkId);
 
     pushConfirmTransaction(
@@ -150,7 +180,12 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
           : const Icon(Icons.phone_in_talk_rounded, size: 40),
       details: [
         TxDetail('To', phone),
-        TxDetail('Amount', 'N$amount.0'),
+        TxDetail('Airtime value', _money(quote.faceValue)),
+        TxDetail(
+          'Discount (${_percent(quote.discountPercent)}%)',
+          '-${_money(quote.discountAmount)}',
+        ),
+        TxDetail('Amount to pay', _money(quote.amountToPay)),
         TxDetail('Network', network.name),
         TxDetail('Description', '${network.name} $airtimeType'),
       ],
@@ -178,7 +213,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
           "Congratulations! You've successfully purchased airtime for $phone on ${network.name}",
       notify: TxInfo(
         kind: TxKind.airtime,
-        amount: '₦$amount',
+        amount: _money(quote.amountToPay),
         recipient: phone,
         network: network.name,
       ),
@@ -567,9 +602,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
         .toList();
     final hasNetwork = _selectedNetworkId != null;
     final hasType = _selectedAirtimeType != null;
-    final chargeText = _amountController.text.trim().isNotEmpty
-        ? 'N${_amountController.text.trim()}.0'
-        : '';
+    final quote = _currentQuote(appData);
 
     return Scaffold(
       appBar: AppBar(
@@ -679,21 +712,7 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   onTap: _onPresetTap,
                 ),
                 const SizedBox(height: 24),
-                Row(
-                  children: [
-                    const _SectionLabel('Amount'),
-                    const Spacer(),
-                    if (chargeText.isNotEmpty)
-                      Text(
-                        chargeText,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                  ],
-                ),
+                Row(children: [const _SectionLabel('Amount')]),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _amountController,
@@ -707,6 +726,14 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
                   ],
                   decoration: _fieldDecoration(cs, hint: 'Amount'),
                 ),
+                if (quote != null) ...[
+                  const SizedBox(height: 14),
+                  _AirtimePriceBreakdown(
+                    quote: quote,
+                    money: _money,
+                    percent: _percent,
+                  ),
+                ],
               ],
             ],
           ),
@@ -741,6 +768,94 @@ class _BuyAirtimeScreenState extends State<BuyAirtimeScreen> {
       ),
       counterText: counterText,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+  }
+}
+
+class _AirtimePriceBreakdown extends StatelessWidget {
+  final AirtimeQuote quote;
+  final String Function(double) money;
+  final String Function(double) percent;
+
+  const _AirtimePriceBreakdown({
+    required this.quote,
+    required this.money,
+    required this.percent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.primary.withValues(alpha: 0.14)),
+      ),
+      child: Column(
+        children: [
+          _PriceRow(label: 'Airtime value', value: money(quote.faceValue)),
+          const SizedBox(height: 10),
+          _PriceRow(
+            label: 'Discount (${percent(quote.discountPercent)}%)',
+            value: '-${money(quote.discountAmount)}',
+            valueColor: const Color(0xFF087A4B),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Divider(height: 1, color: cs.outlineVariant),
+          ),
+          _PriceRow(
+            label: 'Amount to pay',
+            value: money(quote.amountToPay),
+            emphasized: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PriceRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+  final bool emphasized;
+
+  const _PriceRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: emphasized
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
+              fontWeight: emphasized ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Text(
+          value,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: valueColor ?? theme.colorScheme.onSurface,
+            fontWeight: emphasized ? FontWeight.w800 : FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -112,7 +112,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'If an account exists for this email, we\'ve sent a password reset link.',
+                  'If an account exists for this email, we\'ve sent a password reset link. Check your email or spam folder for the link.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,

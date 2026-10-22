@@ -653,9 +653,9 @@ class AirtimeReceiptScreen extends BaseReceiptScreen {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Amount', style: TextStyle(color: Colors.grey)),
+                const Text('Amount paid', style: TextStyle(color: Colors.grey)),
                 Text(
-                  '₦${item.amount}',
+                  '₦${item.receiptAmount}',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -685,8 +685,13 @@ class AirtimeReceiptScreen extends BaseReceiptScreen {
         _dividerRow('Status', item.status),
         _dividerRow('Phone', item.mobileNumber),
         _dividerRow('Product', '${item.networkName} VTU'),
-        _dividerRow('Amount', item.amount),
-        _dividerRow('Amount Paid', item.amount),
+        _dividerRow('Airtime Value', '₦${item.amount}'),
+        if (item.airtimeDiscountAmount != null)
+          _dividerRow(
+            'Discount',
+            '-₦${item.airtimeDiscountAmount!.toStringAsFixed(2)}',
+          ),
+        _dividerRow('Amount Paid', '₦${item.receiptAmount}'),
         _dividerRow('Previous Balance', '₦${item.balanceBefore}'),
         _dividerRow('New Balance', '₦${item.balanceAfter}'),
         _dividerRow('Date', _formatDate(item.timestamp)),
@@ -734,10 +739,17 @@ class AirtimeReceiptScreen extends BaseReceiptScreen {
       pw.Text('Product: ${item.product ?? 'VTU'}'),
       pw.SizedBox(height: 4),
       pw.Divider(),
-      pw.Text('Amount: ₦${item.amount}'),
+      pw.Text('Airtime Value: ₦${item.amount}'),
       pw.SizedBox(height: 4),
       pw.Divider(),
-      pw.Text('Amount Paid: ₦${item.amount}'),
+      if (item.airtimeDiscountAmount != null) ...[
+        pw.Text(
+          'Discount: -₦${item.airtimeDiscountAmount!.toStringAsFixed(2)}',
+        ),
+        pw.SizedBox(height: 4),
+        pw.Divider(),
+      ],
+      pw.Text('Amount Paid: ₦${item.receiptAmount}'),
       pw.SizedBox(height: 4),
       pw.Divider(),
       pw.Text('Previous Balance: ₦${item.balanceBefore}'),

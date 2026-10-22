@@ -120,7 +120,7 @@ class TransactionReceiptScreen extends StatelessWidget {
             pw.Text('Transaction receipt'),
             pw.SizedBox(height: 20),
             pw.Text(
-              formatMoney(item.amount),
+              formatMoney(item.receiptAmount),
               style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 18),
@@ -128,6 +128,15 @@ class TransactionReceiptScreen extends StatelessWidget {
             _pdfRow('Transaction ID', item.id),
             _pdfRow('Service', serviceLabel(item)),
             _pdfRow('Phone number', item.mobileNumber),
+            if (item.transactionType == TransactionType.airtime) ...[
+              _pdfRow('Airtime value', formatMoney(item.amount)),
+              if (item.airtimeDiscountAmount != null)
+                _pdfRow(
+                  'Discount',
+                  '-${formatMoney(item.airtimeDiscountAmount!.toString())}',
+                ),
+              _pdfRow('Amount paid', formatMoney(item.receiptAmount)),
+            ],
             _pdfRow('Description', item.duration),
             _pdfRow('Plan', item.plan),
             _pdfRow('Payment method', item.paymentMedium),
@@ -196,6 +205,15 @@ class _ReceiptDocument extends StatelessWidget {
     final rows = <(String, String)>[
       ('Transaction ID', item.id),
       ('Phone number', item.mobileNumber),
+      if (item.transactionType == TransactionType.airtime) ...[
+        ('Airtime value', formatMoney(item.amount)),
+        if (item.airtimeDiscountAmount != null)
+          (
+            'Discount',
+            '-${formatMoney(item.airtimeDiscountAmount!.toString())}',
+          ),
+        ('Amount paid', formatMoney(item.receiptAmount)),
+      ],
       ('Description', item.duration),
       ('Plan', item.plan),
       ('Payment method', item.paymentMedium),
@@ -233,11 +251,13 @@ class _ReceiptDocument extends StatelessWidget {
                     color: colors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    initials(Brand.current.appName),
-                    style: TextStyle(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w900,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      Brand.current.logoAsset,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
@@ -289,7 +309,7 @@ class _ReceiptDocument extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                formatMoney(item.amount),
+                formatMoney(item.receiptAmount),
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
@@ -547,19 +567,4 @@ String serviceLabel(TransactionItem item) {
     item.planSize,
   ].where((value) => value.trim().isNotEmpty).toList();
   return parts.isEmpty ? 'Transaction' : parts.join(' • ');
-}
-
-String initials(String value) {
-  final words = value
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((word) => word.isNotEmpty)
-      .toList();
-  if (words.isEmpty) return 'FS';
-  if (words.length == 1) {
-    return words.first.length < 2
-        ? words.first.toUpperCase()
-        : words.first.substring(0, 2).toUpperCase();
-  }
-  return '${words.first[0]}${words.last[0]}'.toUpperCase();
 }

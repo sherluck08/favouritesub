@@ -18,6 +18,7 @@ class TransactionItem {
   final DateTime timestamp;
   final String networkId;
   final String amount;
+  final String? paidAmount;
   final String status;
   final String paymentMedium;
   final String balanceBefore;
@@ -52,6 +53,7 @@ class TransactionItem {
     required this.timestamp,
     required this.networkId,
     required this.amount,
+    this.paidAmount,
     required this.status,
     required this.paymentMedium,
     required this.balanceBefore,
@@ -278,6 +280,7 @@ class TransactionItem {
       ]),
       networkId: pickStr(['network', 'network_id']),
       amount: pickStr(['plan_amount', 'amount', 'amount_paid']),
+      paidAmount: pickStr(['paid_amount', 'amount_paid', 'charged_amount']),
       status: pickStr(['Status', 'status']),
       paymentMedium: pickStr(['payment_medium', 'paymentMethod']),
       balanceBefore: pickStr(['balance_before', 'previous_balance']),
@@ -320,5 +323,22 @@ class TransactionItem {
       })(),
       examName: pickStr(['exam_name']),
     );
+  }
+
+  String get receiptAmount {
+    final paid = paidAmount?.trim() ?? '';
+    return transactionType == TransactionType.airtime && paid.isNotEmpty
+        ? paid
+        : amount;
+  }
+
+  double? get airtimeDiscountAmount {
+    if (transactionType != TransactionType.airtime) return null;
+    final face = double.tryParse(amount.replaceAll(RegExp(r'[^0-9.-]'), ''));
+    final paid = double.tryParse(
+      (paidAmount ?? '').replaceAll(RegExp(r'[^0-9.-]'), ''),
+    );
+    if (face == null || paid == null || paid >= face) return null;
+    return face - paid;
   }
 }

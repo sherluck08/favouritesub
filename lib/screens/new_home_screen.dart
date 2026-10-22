@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:favouritesub/main.dart';
+import 'package:favouritesub/config/brand.dart';
 import 'package:favouritesub/mixins/refresh_tracker_mixin.dart';
 import 'package:favouritesub/models/app_data.dart';
 import 'package:favouritesub/models/transaction_item.dart';
@@ -464,14 +465,12 @@ class _HomeHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
           alignment: Alignment.center,
-          child: const Text(
-            'FS',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-              letterSpacing: -0.5,
-            ),
+          clipBehavior: Clip.antiAlias,
+          child: Image.asset(
+            Brand.current.logoAsset,
+            width: 44,
+            height: 44,
+            fit: BoxFit.cover,
           ),
         ),
         const SizedBox(width: 12),

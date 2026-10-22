@@ -298,7 +298,7 @@ class _Header extends StatelessWidget {
                     const _NigeriaFlag(),
                     const SizedBox(width: 6),
                     Text(
-                      'Built for Nigeria',
+                      'Built for Nigerians',
                       style: TextStyle(
                         color: colors.onSurfaceVariant,
                         fontSize: 10,

@@ -13,6 +13,7 @@ class AppData {
   final List<Disco> disco;
   final List<String> planTypes;
   final List<NetworkDef> networks;
+  final AirtimePricing airtimePricing;
 
   AppData({
     required this.user,
@@ -27,6 +28,7 @@ class AppData {
     required this.disco,
     required this.planTypes,
     required this.networks,
+    required this.airtimePricing,
   });
 
   factory AppData.fromJson(Map<String, dynamic> json) {
@@ -66,6 +68,7 @@ class AppData {
           .toList(),
       planTypes: _parsePlanTypes(json['plan_type']),
       networks: _parseNetworks(json['network']),
+      airtimePricing: AirtimePricing.fromAppData(json),
     );
   }
 
@@ -82,6 +85,7 @@ class AppData {
     'disco': disco.map((e) => e.toJson()).toList(),
     'plan_type': planTypes.map((e) => [e, e]).toList(),
     'network': networks.map((e) => e.toJson()).toList(),
+    'topuppercentage': airtimePricing.toJson(),
   };
 
   static List<String> _parsePlanTypes(dynamic raw) {
@@ -114,6 +118,93 @@ class AppData {
   static AppData fromJsonString(String jsonString) =>
       AppData.fromJson(jsonDecode(jsonString) as Map<String, dynamic>);
   String toJsonString() => jsonEncode(toJson());
+}
+
+/// User-specific airtime rates returned by the backend.
+///
+/// The backend stores a percentage of face value (99 means the customer pays
+/// 99%). Parsing and quoting live here so every branded app can reuse exactly
+/// the same calculation for its form, confirmation screen and receipt.
+class AirtimePricing {
+  final Map<String, Map<String, double>> rates;
+
+  const AirtimePricing(this.rates);
+
+  factory AirtimePricing.fromJson(dynamic raw) {
+    final parsed = <String, Map<String, double>>{};
+    if (raw is Map) {
+      raw.forEach((network, value) {
+        if (value is! Map) return;
+        final types = <String, double>{};
+        value.forEach((type, rate) {
+          final number = rate is num
+              ? rate.toDouble()
+              : double.tryParse(rate.toString());
+          if (number != null) types[_key(type.toString())] = number;
+        });
+        parsed[_key(network.toString())] = types;
+      });
+    }
+    return AirtimePricing(parsed);
+  }
+
+  /// Supports both API shapes used by the related branded projects:
+  /// a top-level payment-percentage map and per-network discount percentages.
+  factory AirtimePricing.fromAppData(Map<String, dynamic> json) {
+    if (json['topuppercentage'] is Map) {
+      return AirtimePricing.fromJson(json['topuppercentage']);
+    }
+
+    final parsed = <String, Map<String, double>>{};
+    final networks = json['network'];
+    if (networks is List) {
+      for (final entry in networks.whereType<Map>()) {
+        final network = entry['name']?.toString();
+        final percentages = entry['topup_percentage'];
+        if (network == null || percentages is! Map) continue;
+        final vtuDiscount = _number(percentages['vtu_percentage']);
+        final snsDiscount = _number(percentages['sns_percentage']);
+        parsed[_key(network)] = {
+          if (vtuDiscount != null) _key('VTU'): 100 - vtuDiscount,
+          if (snsDiscount != null) _key('Share and Sell'): 100 - snsDiscount,
+        };
+      }
+    }
+    return AirtimePricing(parsed);
+  }
+
+  AirtimeQuote quote({
+    required String network,
+    required String airtimeType,
+    required double faceValue,
+  }) {
+    final rawRate = rates[_key(network)]?[_key(airtimeType)] ?? 100;
+    final ratePercent = rawRate <= 1 ? rawRate * 100 : rawRate;
+    return AirtimeQuote(
+      faceValue: faceValue,
+      ratePercent: ratePercent.clamp(0, 100).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => rates;
+
+  static String _key(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  static double? _number(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '');
+}
+
+class AirtimeQuote {
+  final double faceValue;
+  final double ratePercent;
+
+  const AirtimeQuote({required this.faceValue, required this.ratePercent});
+
+  double get amountToPay => faceValue * ratePercent / 100;
+  double get discountAmount => faceValue - amountToPay;
+  double get discountPercent => 100 - ratePercent;
 }
 
 class UserData {

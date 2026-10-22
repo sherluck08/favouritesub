@@ -5,6 +5,7 @@ class BrandConfig {
     required this.appName,
     required this.domain,
     required this.seedColor,
+    required this.logoAsset,
   });
 
   final String appName;
@@ -12,6 +13,9 @@ class BrandConfig {
   final String domain; // e.g. https://favouritesub.com
 
   final Color seedColor;
+
+  /// Packaged app logo used by portable branded surfaces such as receipts.
+  final String logoAsset;
 }
 
 class Brand {
@@ -19,6 +23,7 @@ class Brand {
     appName: 'favouritesub',
     domain: 'https://favouritesub.com',
     seedColor: Color(0xFF490000),
+    logoAsset: 'assets/images/Logo_2.png',
   );
 
   static Color get primary => Color(0xFF490000);
