@@ -347,20 +347,37 @@ class WebConfig {
   final String? supportPhoneNumber;
   final String? gmail;
   final String? whatsappGroupLink;
+  final double airtimeToCashMinimumAmount;
 
-  WebConfig({this.supportPhoneNumber, this.gmail, this.whatsappGroupLink});
+  WebConfig({
+    this.supportPhoneNumber,
+    this.gmail,
+    this.whatsappGroupLink,
+    this.airtimeToCashMinimumAmount = 500,
+  });
 
   factory WebConfig.fromJson(Map<String, dynamic> json) => WebConfig(
     supportPhoneNumber: json['support_phone_number']?.toString(),
     gmail: json['gmail']?.toString(),
     whatsappGroupLink: json['whatsapp_group_link']?.toString(),
+    airtimeToCashMinimumAmount: _readMinimumAmount(
+      json['airtime_to_cash_minimum_amount'],
+    ),
   );
 
   Map<String, dynamic> toJson() => {
     'support_phone_number': supportPhoneNumber,
     'gmail': gmail,
     'whatsapp_group_link': whatsappGroupLink,
+    'airtime_to_cash_minimum_amount': airtimeToCashMinimumAmount,
   };
+
+  static double _readMinimumAmount(dynamic value) {
+    final parsed = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '');
+    return parsed != null && parsed > 0 ? parsed : 500;
+  }
 }
 
 class AppMessage {

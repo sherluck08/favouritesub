@@ -61,9 +61,20 @@ class _AirtimeToCashScreenState extends State<AirtimeToCashScreen> {
       (user.accountNumber?.trim().isNotEmpty ?? false) &&
       (user.accountName?.trim().isNotEmpty ?? false);
 
+  int _networkOrder(String networkName) {
+    return switch (networkName.trim().toUpperCase()) {
+      'MTN' => 0,
+      'GLO' => 1,
+      'AIRTEL' => 2,
+      '9MOBILE' => 100,
+      _ => 50,
+    };
+  }
+
   Future<void> _proceed(AppData data) async {
     final phone = _phoneController.text.trim();
     final amount = double.tryParse(_amountController.text.trim());
+    final minimumAmount = data.webconfig?.airtimeToCashMinimumAmount ?? 500;
     final matches = data.networks.where((item) => item.id == _networkId);
 
     String? error;
@@ -71,8 +82,8 @@ class _AirtimeToCashScreenState extends State<AirtimeToCashScreen> {
       error = 'Select the network of the SIM sending the airtime.';
     } else if (phone.length != 11 || !RegExp(r'^0\d{10}$').hasMatch(phone)) {
       error = 'Enter the 11-digit phone number that will send the airtime.';
-    } else if (amount == null || amount < 500) {
-      error = 'The minimum airtime amount is ₦500.';
+    } else if (amount == null || amount < minimumAmount) {
+      error = 'The minimum airtime amount is ${_money(minimumAmount)}.';
     } else if (_destination == _PayoutDestination.bank && amount < 1000) {
       error = 'Bank payout is available from ₦1,000. Choose wallet instead.';
     } else if (_destination == _PayoutDestination.bank &&
@@ -134,13 +145,20 @@ class _AirtimeToCashScreenState extends State<AirtimeToCashScreen> {
     final data = provider.data;
     final availableNetworks = data == null
         ? const <NetworkDef>[]
-        : data.networks
+        : (data.networks
               .where(
                 (network) =>
                     network.airtimeCashRatePercent > 0 &&
                     _receiverFor(data, network.name) != null,
               )
-              .toList();
+              .toList()
+            ..sort((a, b) {
+              final order = _networkOrder(
+                a.name,
+              ).compareTo(_networkOrder(b.name));
+              return order != 0 ? order : a.name.compareTo(b.name);
+            }));
+    final minimumAmount = data?.webconfig?.airtimeToCashMinimumAmount ?? 500;
     final selected = availableNetworks
         .where((network) => network.id == _networkId)
         .firstOrNull;
@@ -222,7 +240,7 @@ class _AirtimeToCashScreenState extends State<AirtimeToCashScreen> {
                           onChanged: (_) => setState(() {}),
                           decoration: _fieldDecoration(
                             context,
-                            hint: 'Minimum ₦500',
+                            hint: 'Minimum ${_money(minimumAmount)}',
                             icon: Icons.payments_outlined,
                             prefixText: '₦ ',
                           ),
