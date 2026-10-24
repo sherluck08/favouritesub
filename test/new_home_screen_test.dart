@@ -52,6 +52,7 @@ void main() {
 
     expect(find.text('Everyday services'), findsOneWidget);
     expect(find.text('Buy data'), findsOneWidget);
+    expect(find.text('Airtime to cash'), findsOneWidget);
     expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsNWidgets(2));
     expect(tester.takeException(), isNull);

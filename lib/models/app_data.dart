@@ -218,6 +218,9 @@ class UserData {
   final String bonusBalance;
   final String? reservedAccountNumber;
   final String? reservedBankName;
+  final String? bankName;
+  final String? accountNumber;
+  final String? accountName;
   final String? pin;
   final List<BankAccount>? accounts;
 
@@ -232,6 +235,9 @@ class UserData {
     required this.bonusBalance,
     required this.reservedAccountNumber,
     required this.reservedBankName,
+    required this.bankName,
+    required this.accountNumber,
+    required this.accountName,
     required this.pin,
     this.accounts,
   });
@@ -280,6 +286,9 @@ class UserData {
       reservedAccountNumber: json['reservedaccountNumber']?.toString(),
       pin: json['pin']?.toString(),
       reservedBankName: json['reservedbankName']?.toString(),
+      bankName: json['BankName']?.toString(),
+      accountNumber: json['AccountNumber']?.toString(),
+      accountName: json['AccountName']?.toString(),
       accounts: parsedAccounts,
     );
   }
@@ -296,6 +305,9 @@ class UserData {
     'reservedaccountNumber': reservedAccountNumber,
     'pin': pin,
     'reservedbankName': reservedBankName,
+    'BankName': bankName,
+    'AccountNumber': accountNumber,
+    'AccountName': accountName,
     'bank_accounts': accounts != null
         ? jsonEncode({'accounts': accounts!.map((e) => e.toJson()).toList()})
         : null,
@@ -481,12 +493,14 @@ class NetworkDef {
   final int id;
   final Map<String, List<NetworkPlanItem>> plansByType;
   final List<RechargePricing> rechargeCardPricing;
+  final double airtimeCashRatePercent;
 
   NetworkDef({
     required this.name,
     required this.id,
     required this.plansByType,
     required this.rechargeCardPricing,
+    required this.airtimeCashRatePercent,
   });
 
   factory NetworkDef.fromJson(Map<String, dynamic> json) {
@@ -514,7 +528,19 @@ class NetworkDef {
       id: (json['id'] as num).toInt(),
       plansByType: plansByType,
       rechargeCardPricing: recharge,
+      airtimeCashRatePercent: _readAirtimeCashRate(
+        json['airtime_convert_percentage'],
+      ),
     );
+  }
+
+  static double _readAirtimeCashRate(dynamic raw) {
+    dynamic value = raw;
+    if (raw is Map) value = raw['percent'];
+    final parsed = value is num
+        ? value.toDouble()
+        : double.tryParse(value?.toString() ?? '');
+    return (parsed ?? 0).clamp(0, 100).toDouble();
   }
 
   Map<String, dynamic> toJson() => {
@@ -526,6 +552,7 @@ class NetworkDef {
     'recharge_card_pricing': rechargeCardPricing
         .map((e) => e.toJson())
         .toList(),
+    'airtime_convert_percentage': {'percent': airtimeCashRatePercent},
   };
 
   List<NetworkPlanItem> getPlans(String planType) =>

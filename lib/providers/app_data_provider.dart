@@ -280,6 +280,7 @@ class AppDataProvider extends ChangeNotifier {
         id: -1,
         plansByType: const {},
         rechargeCardPricing: const [],
+        airtimeCashRatePercent: 0,
       ),
     );
     if (network == null || network.id == -1) return const [];

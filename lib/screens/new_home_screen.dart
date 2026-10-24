@@ -11,6 +11,7 @@ import 'package:favouritesub/providers/transaction_provider.dart';
 import 'package:favouritesub/providers/user_provider.dart';
 import 'package:favouritesub/services/notification_store.dart';
 import 'package:favouritesub/screens/bonus_to_wallet_screen.dart';
+import 'package:favouritesub/screens/airtime_to_cash_screen.dart';
 import 'package:favouritesub/screens/buy_airtime_screen.dart';
 import 'package:favouritesub/screens/buy_data_screen.dart';
 import 'package:favouritesub/screens/cable_sub_screen.dart';
@@ -269,6 +270,12 @@ class _NewHomeScreenState extends State<NewHomeScreen>
         color: const Color(0xFF18825A),
         onTap: () =>
             PinGuard.pushWithPinSetup(context, (_) => const BuyAirtimeScreen()),
+      ),
+      _ServiceAction(
+        icon: Icons.currency_exchange_rounded,
+        label: 'Airtime to cash',
+        color: const Color(0xFF9B5C13),
+        onTap: () => _push(const AirtimeToCashScreen()),
       ),
       _ServiceAction(
         icon: Icons.tv_rounded,
